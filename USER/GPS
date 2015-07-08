@@ -1,0 +1,114 @@
+ #include"gpsset.h"
+void Init_UBLOX_MSG()
+{
+	unsigned char MSG_ID[2]={0x06,0x01};
+	unsigned char GGA_Payload[3]={0xf0,0x00,0x01}; //第三个0x00是数据率 HZ
+	unsigned char GLL_Payload[3]={0xf0,0x01,0x01};
+	unsigned char GSA_Payload[3]={0xf0,0x02,0x01};
+	unsigned char GSV_Payload[3]={0xf0,0x03,0x01};
+	unsigned char RMC_Payload[3]={0xf0,0x04,0x01};
+	unsigned char VTG_Payload[3]={0xf0,0x05,0x01};
+	unsigned char ZDA_Payload[3]={0xf0,0x08,0x01};
+
+
+	UBLOX_CFG(MSG_ID,3,GGA_Payload);	//发送GPGGA配置指令
+//	UBLOX_CFG(MSG_ID,3,GGA_Payload);	//更改波特率后，第一条指令发送错误？？？？
+	UBLOX_CFG(MSG_ID,3,GLL_Payload);	//发送GPGLL配置指令
+	UBLOX_CFG(MSG_ID,3,GSA_Payload);	//发送GPGSA配置指令
+	UBLOX_CFG(MSG_ID,3,GSV_Payload);	//发送GPGSV配置指令
+	UBLOX_CFG(MSG_ID,3,RMC_Payload);
+	UBLOX_CFG(MSG_ID,3,VTG_Payload);
+	UBLOX_CFG(MSG_ID,3,ZDA_Payload);
+}
+
+void Init_UBLOX_TP()
+{
+	unsigned char TP_ID[2]={0x06,0x31};
+	unsigned char TP_Payload[32]={
+	0x01,0x00,0x00,0x00,//0-3,tpIdx=0,timepulse,reserved0,reserved1   
+	50&0xff,(50>>8)&0xff,0&0xff,(0>>8)&0xff,//4-7,antCableDelay=50ns,rfGroupDelay=0 
+	1000000&0xff,(1000000>>8)&0xff,(1000000>>16)&0xff,(1000000>>24)&0xff,//8-11，PPS freqPeriod=1000000us=1s,IsFreq=0;
+	1000000&0xff,(1000000>>8)&0xff,(1000000>>16)&0xff,(1000000>>24)&0xff,//12-15，freqPeriodLoc=1000000us=1S
+	100000&0xff,(100000>>8)&0xff,(100000>>16)&0xff,(100000>>24)&0xff,//16-19,	pulseLenRatio=100000us=100ms
+	100000&0xff,(100000>>8)&0xff,(100000>>16)&0xff,(100000>>24)&0xff,//20-23,	pulseLenRatioLock=100ms,
+	10&0xff,(10>>8)&0xff,(10>>16)&0xff,(10>>24)&0xff,//24-27,	userConfigDelay=10ns
+	BIT0|BIT1|BIT2|BIT4|BIT5|BIT6,0x00,0x00,0x00//Active=1,LockGpsFreq=1,lockedOtherSet=1,isFreq=0,isLength=1,alignToTow=1,polarity=1,gridUtcGps=0,  UTC对齐
+	};
+	UBLOX_CFG(TP_ID,32,TP_Payload);
+}
+
+
+
+void UBLOX_CFG(unsigned char * ID,short int  Length,unsigned char *Payload)
+{
+	int i=0;
+	unsigned char CK_A=0;
+	unsigned char CK_B=0;
+/*
+	CK_A=0xff;
+	CK_B=0x02;
+	CK_A=CK_A+CK_B;
+*/
+//	while(512-GetUartTXFIFOusedw(UBLOX_UART_STATUS_ADDR)<Length+7);//等待发送缓存容得下一个指令
+	//写数据到缓存
+	USART1->DR=0xB5;
+	while((USART1->SR&0X40)==0);//等待发送结束
+	USART1->DR=0x62;
+	while((USART1->SR&0X40)==0);//等待发送结束
+	USART1->DR=* ID;
+	while((USART1->SR&0X40)==0);//等待发送结束
+	USART1->DR=* (ID+1);
+	while((USART1->SR&0X40)==0);//等待发送结束
+	USART1->DR=(Length&0xff);
+	while((USART1->SR&0X40)==0);//等待发送结束
+	USART1->DR=((Length>>8)&0xff);
+	while((USART1->SR&0X40)==0);//等待发送结束
+	for(i=0;i<Length;i++)
+		USART1->DR=* (Payload+i);
+		while((USART1->SR&0X40)==0);//等待发送结束
+
+	//计算校验值
+	for(i=0;i<2;i++)
+	{
+	CK_A=CK_A+(* (ID+i));
+	CK_B=CK_B+CK_A;
+	}
+	
+	CK_A=CK_A+(Length&0xff);
+	CK_B=CK_B+CK_A;
+
+	CK_A=CK_A+((Length>>8)&0xff);
+	CK_B=CK_B+CK_A;
+
+	for (i=0;i<Length;i++)
+	{
+	CK_A=CK_A+(* (Payload+i));
+	CK_B=CK_B+CK_A;
+	}
+
+	//写校验值到缓存
+	USART1->DR=CK_A;
+	while((USART1->SR&0X40)==0);//等待发送结束
+	USART1->DR=CK_B;
+	while((USART1->SR&0X40)==0);//等待发送结束
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

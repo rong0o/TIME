@@ -1,0 +1,1 @@
+-c --cpu Cortex-M3 -g -O0 --apcs=interwork -I..\USER -I..\SYSTEM\delay -I..\SYSTEM\sys -I..\SYSTEM\usart -I..\HARDWARE\EXTI -I..\HARDWARE\GPS -I..\HARDWARE\SPI -I..\HARDWARE\TIMER -I "D:\keil4 set\ARM\INC" -I "D:\keil4 set\ARM\INC\ST\STM32F10x" -DSTM32F10X_HD -o "..\OBJ\gps.o" --omf_browse "..\OBJ\gps.crf" --depend "..\OBJ\gps.d" "..\HARDWARE\GPS\gps.c"
